@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class BaseModel extends Model
 {
+    public array $dateTimeFields = [
+        'created_at',
+        'updated_at',
+    ];
+
     public function setCreatedAtAttribute($createdAt)
     {
         $this->attributes[self::CREATED_AT] = Date::enWithTime($createdAt);

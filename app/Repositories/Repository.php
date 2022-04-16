@@ -7,6 +7,7 @@ use App\Exceptions\UnableToResolveModelClassException;
 use App\Models\BaseModel;
 use App\Repositories\Contracts\IRepository;
 use App\Traits\ParameterHandler;
+use App\Utils\Date;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -74,7 +75,9 @@ class Repository implements IRepository
 
     protected function handleQueryParams(Collection $params): self
     {
-        return $this->handleFieldsFilters($params);
+        return $this
+            ->handleFieldsFilters($params)
+            ->handleDateTimeFieldsFilters($params);
     }
 
     protected function handleFieldsFilters(Collection $params): self
@@ -109,7 +112,9 @@ class Repository implements IRepository
                 $key = substr($key, 0, -2);
             }
 
-            if (! isset( $this->tableFields[$key])) {
+            if (! isset($this->tableFields[$key])
+                || in_array($this->tableFields[$key], $this->model->dateTimeFields)
+            ) {
                 continue;
             }
 
@@ -130,6 +135,36 @@ class Repository implements IRepository
                         $this->query->where($this->tableFields[$key], $operator, $itemV);
                     }
                     break;
+            }
+        }
+
+        return $this;
+    }
+
+    protected function handleDateTimeFieldsFilters(Collection $params)
+    {
+        foreach ($params->toArray() as $key => $value) {
+            $key = strtoupper((string) $key);
+
+            if (! $value
+                || ! isset($this->tableFields[$key])
+                || ! in_array($this->tableFields[$key], $this->model->dateTimeFields)
+            ) {
+                continue;
+            }
+
+            $values = explode('to', $value);
+            $initialDate = $values[0];
+            $finalDate = '';
+
+            if (count($values) > 1) {
+                $finalDate = $values[1];
+            }
+
+            if ($initialDate && strlen($initialDate)) {
+                $initialDate = Date::enWithTime($initialDate);
+                dd($initialDate);
+                $this->query->where($this->tableFields[$key], $initialDate);
             }
         }
 
